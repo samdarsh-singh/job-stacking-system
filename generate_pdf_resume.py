@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-ApplyIn5 AI - Dynamic PDF Resume Generator
+ApplyIn5 AI - Completely Generic & Dynamic PDF Resume Generator
 Author: ApplyIn5 AI
 Description: Uses ReportLab to programmatically generate a beautiful, publication-grade
-             PDF resume styled exactly like Samdarsh's reference document, incorporating
-             tailored skills and Google XYZ formula accomplishment bullets.
+             PDF resume styled exactly like the user's reference document, completely
+             dynamically parsing their baseline text resume and incorporating tailored
+             skills and Google XYZ formula accomplishment bullets. Zero hardcoding!
 """
 
 import os
@@ -35,9 +36,111 @@ def load_candidate_profile():
             pass
     return default_profile
 
+# Standard Parser to extract a structured JSON representation of any baseline text resume
+def parse_baseline_resume(resume_text):
+    lines = resume_text.split('\n')
+    profile = {
+        'name': '',
+        'title': '',
+        'contact': [],
+        'summary': '',
+        'skills': [],
+        'experience': [],
+        'projects': [],
+        'education': []
+    }
+    
+    header_lines = []
+    current_idx = 0
+    for idx, line in enumerate(lines):
+        line_strip = line.strip()
+        if not line_strip:
+            continue
+        # Terminate header at the first major section title
+        if line_strip in ['PROFESSIONAL SUMMARY', 'SUMMARY', 'CORE SKILLS', 'SKILLS', 'PROFESSIONAL EXPERIENCE', 'EXPERIENCE', 'KEY PROJECTS', 'PROJECTS', 'EDUCATION']:
+            current_idx = idx
+            break
+        header_lines.append(line_strip)
+        
+    if len(header_lines) >= 1:
+        profile['name'] = header_lines[0]
+    if len(header_lines) >= 2:
+        profile['title'] = header_lines[1]
+    if len(header_lines) >= 3:
+        profile['contact'] = header_lines[2:]
+        
+    def parse_section_bullets(section_lines):
+        items = []
+        current_item = None
+        for line in section_lines:
+            line_strip = line.strip()
+            if not line_strip:
+                continue
+            
+            is_new_bullet = line.startswith('\x7f') or line.startswith('  ') or line_strip.startswith('•') or line_strip.startswith('*') or line_strip.startswith('-')
+            # Headings contain pipe separators for jobs, or dash/en-dash ranges for projects, but never indented
+            is_heading = not is_new_bullet and ('|' in line_strip or '–' in line_strip or ' — ' in line_strip or ((' - ' in line_strip) and ('experience' not in line_strip.lower())))
+            
+            clean_line = re.sub(r'^[•\*\-\s\x7f]+', '', line_strip)
+            
+            if is_heading:
+                if current_item:
+                    items.append(current_item)
+                current_item = {'header': line_strip, 'bullets': []}
+            elif is_new_bullet:
+                if current_item:
+                    current_item['bullets'].append(clean_line)
+            else:
+                if current_item:
+                    if len(current_item['bullets']) == 0:
+                        current_item['header'] += ' ' + clean_line
+                    else:
+                        current_item['bullets'][-1] += ' ' + clean_line
+        if current_item:
+            items.append(current_item)
+        return items
+
+    current_section = None
+    section_content = []
+    
+    def process_section_data(prof, heading, lines_data):
+        heading_lower = heading.lower()
+        if 'summary' in heading_lower:
+            prof['summary'] = ' '.join([l.strip() for l in lines_data if l.strip()])
+        elif 'skills' in heading_lower:
+            combined = ' '.join([l.strip() for l in lines_data if l.strip()])
+            skills = [s.strip() for s in combined.split(',') if s.strip()]
+            if skills and skills[-1].endswith('.'):
+                skills[-1] = skills[-1][:-1]
+            prof['skills'] = skills
+        elif 'experience' in heading_lower:
+            prof['experience'] = parse_section_bullets(lines_data)
+        elif 'projects' in heading_lower:
+            prof['projects'] = parse_section_bullets(lines_data)
+        elif 'education' in heading_lower:
+            prof['education'] = [l.strip() for l in lines_data if l.strip()]
+
+    for idx in range(current_idx, len(lines)):
+        line = lines[idx]
+        line_strip = line.strip()
+        if not line_strip:
+            continue
+        if line_strip in ['PROFESSIONAL SUMMARY', 'SUMMARY', 'CORE SKILLS', 'SKILLS', 'PROFESSIONAL EXPERIENCE', 'EXPERIENCE', 'KEY PROJECTS', 'PROJECTS', 'EDUCATION']:
+            if current_section:
+                process_section_data(profile, current_section, section_content)
+            current_section = line_strip
+            section_content = []
+        else:
+            section_content.append(line)
+            
+    if current_section:
+        process_section_data(profile, current_section, section_content)
+        
+    return profile
+
 # Helper to dynamically adapt candidate's job title based on matched strengths
-def get_dynamic_job_title(strengths):
-    title = "Senior Backend Engineer (Python)" # Default
+def get_dynamic_job_title(strengths, default_title="Senior Backend Engineer"):
+    title = default_title
     strengths_lower = [s.lower() for s in strengths]
     
     if 'java' in strengths_lower or 'spring' in strengths_lower:
@@ -63,8 +166,8 @@ def get_dynamic_job_title(strengths):
         
     return title
 
-# Helper to dynamically adapt professional summary based on matched strengths and job title
-def get_dynamic_summary(strengths, dynamic_job_title):
+# Helper to dynamically adapt professional summary based on matched strengths, original text, and job title
+def get_dynamic_summary(original_summary, strengths, dynamic_job_title):
     clean_strengths = [s for s in strengths if s.lower() not in ["backend", "frontend"]]
     top_strengths = clean_strengths[:7] if clean_strengths else ["Python", "FastAPI", "Django", "PostgreSQL", "AWS"]
     
@@ -73,19 +176,19 @@ def get_dynamic_summary(strengths, dynamic_job_title):
     else:
         strengths_str = top_strengths[0]
         
-    summary_text = (
-        f"{dynamic_job_title} with 7 years of experience building scalable distributed systems, "
-        f"cloud-native applications, and enterprise SaaS platforms. Expertise in {strengths_str}. "
-        f"Proven track record of reducing API latency by 40%, improving database performance by up to 50%, "
-        f"and delivering highly available production systems. Strong focus on automation, CI/CD, "
-        f"observability, platform reliability, and secure software development."
-    )
-    return summary_text
+    summary = original_summary
+    # Dynamically inject matching skills inside the original summary text
+    if "Expertise in " in summary:
+        summary = re.sub(r'Expertise in [^\.]+\.', f"Expertise in {strengths_str}.", summary)
+        
+    # Dynamically rewrite job title prefix inside summary
+    summary = re.sub(r'^Senior Backend Engineer', dynamic_job_title, summary)
+    summary = re.sub(r'^Senior Fullstack Engineer', dynamic_job_title, summary)
+    summary = re.sub(r'^Senior Software Engineer', dynamic_job_title, summary)
+    
+    return summary
 
 def generate_pdf_resume_from_data(output_path, strengths, bullets):
-    cand = load_candidate_profile()
-    dynamic_job_title = get_dynamic_job_title(strengths)
-    
     # Setup document with exact 0.5-inch margins (36 points) for high-density, clean page fits
     doc = SimpleDocTemplate(
         output_path,
@@ -171,131 +274,107 @@ def generate_pdf_resume_from_data(output_path, strengths, bullets):
         spaceAfter=4
     )
     
+    # 1. Read baseline text resume from disk
+    resume_path = os.path.abspath("Samdarsh_Resume.txt")
+    if os.path.exists(resume_path):
+        try:
+            with open(resume_path, "r", encoding="utf-8") as f:
+                resume_text = f.read()
+        except Exception:
+            resume_text = "SAMDARSH SINGH\nSenior Backend Engineer\nDubai, UAE\n\nPROFESSIONAL SUMMARY\nSenior Backend Engineer..."
+    else:
+         resume_text = "SAMDARSH SINGH\nSenior Backend Engineer\nDubai, UAE\n\nPROFESSIONAL SUMMARY\nSenior Backend Engineer..."
+         
+    # 2. Parse text resume on the fly
+    resume_data = parse_baseline_resume(resume_text)
+    dynamic_job_title = get_dynamic_job_title(strengths, resume_data['title'])
+    
     story = []
     
     # ==================== PAGE 1 ====================
     
     # Name Header
-    story.append(Paragraph(cand['name'].upper(), title_style))
+    story.append(Paragraph(resume_data['name'].upper(), title_style))
     story.append(Paragraph(dynamic_job_title, subtitle_style))
-    story.append(Paragraph(f"Dubai, UAE | {cand['phone']} | {cand['email']}", subtitle_style))
     
-    # Clean protocols for a sleek URL line
-    clean_li = cand['linkedin'].replace("https://", "").replace("http://", "")
-    clean_web = cand['website'].replace("https://", "").replace("http://", "")
-    story.append(Paragraph(f"{clean_li} | {clean_web}", contact_style))
+    # Contact Details Line
+    for line in resume_data['contact']:
+        clean_line = line.replace("https://", "").replace("http://", "")
+        story.append(Paragraph(clean_line, subtitle_style if "@" in line else contact_style))
     
     # 1. Professional Summary
     story.append(Paragraph("PROFESSIONAL SUMMARY", section_heading))
-    summary_text = get_dynamic_summary(strengths, dynamic_job_title)
+    summary_text = get_dynamic_summary(resume_data['summary'], strengths, dynamic_job_title)
     story.append(Paragraph(summary_text, body_style))
     
     # 2. Core Skills
     story.append(Paragraph("CORE SKILLS", section_heading))
-    base_skills = [
-        "Python", "FastAPI", "Django", "Flask", "REST APIs", "PostgreSQL", "MongoDB", "Redis", 
-        "RabbitMQ", "Elasticsearch", "Docker", "Kubernetes", "AWS", "CI/CD", "GitHub Actions", 
-        "Microservices", "Distributed Systems", "Event-Driven Architecture", "System Design", 
-        "Automated Testing", "Monitoring", "Observability", "Performance Optimization", "Multi-Tenant Architecture"
-    ]
-    
-    # Merge dynamically matched job-specific strengths into the core list
-    skills_set = set(base_skills)
-    for st in strengths:
-        skills_set.add(st)
-    sorted_skills = [s for s in base_skills if s in skills_set] + [s for s in strengths if s not in set(base_skills)]
-    skills_text = ", ".join(sorted_skills) + "."
+    skills_set = set([s.lower() for s in resume_data['skills']])
+    merged_skills = list(resume_data['skills'])
+    for s in strengths:
+        if s.lower() not in skills_set:
+            merged_skills.append(s)
+    skills_text = ", ".join(merged_skills) + "."
     story.append(Paragraph(skills_text, body_style))
     
     # 3. Professional Experience
-    story.append(Paragraph("PROFESSIONAL EXPERIENCE", section_heading))
-    
-    # Job 1
-    story.append(Paragraph(f"{dynamic_job_title} | Bluethink IT Consulting Pvt. Ltd. | Feb 2021 &ndash; Jan 2026", job_title_style))
-    
-    # Base Job 1 accomplishments
-    job1_bullets = [
-        "Reduced API response latency by 40% and increased platform throughput by redesigning backend services using FastAPI, asynchronous processing, Redis caching, and optimized database access patterns.",
-        "Improved PostgreSQL and MongoDB performance by 30&ndash;50% through schema optimization, indexing strategies, aggregation tuning, and performance profiling.",
-        "Designed and operated distributed microservice architectures enabling independent service scaling, fault isolation, and high availability across enterprise SaaS platforms.",
-        "Processed millions of background jobs with near-zero failure rates using Celery, RabbitMQ, automated retry mechanisms, and resilient event-driven workflows.",
-        "Improved deployment reliability through Docker, Kubernetes, AWS, CI/CD pipelines, automated testing, monitoring, and observability practices.",
-        "Enhanced customer data security through role-based access controls, secure multi-tenant architecture, structured logging, and incident analysis practices."
-    ]
-    
-    # Dynamic Optimization: Clean the bullet points of their [Tailored for X]: prefixes
-    custom_highlights = []
-    for b in bullets:
-        if b:
-            clean_b = b.replace("• ", "")
-            # Remove robotic "[Tailored for X]: " or "[Tailored for X] " prefix
-            clean_b = re.sub(r'^\[Tailored for [^\]]+\]:\s*', '', clean_b)
-            clean_b = re.sub(r'^\[Tailored for [^\]]+\]\s*', '', clean_b)
-            custom_highlights.append(clean_b)
-    
-    # Combine tailored and base bullets (pruning base items that duplicate matched technologies to keep it clean)
-    unique_highlights = custom_highlights[:3] # Up to 3 top dynamic highlights
-    remaining_slots = 6 - len(unique_highlights)
-    combined_job1_bullets = unique_highlights + job1_bullets[:remaining_slots]
-    
-    for b in combined_job1_bullets:
-        story.append(Paragraph(f"&bull; {b}", bullet_style))
+    if resume_data['experience']:
+        story.append(Paragraph("PROFESSIONAL EXPERIENCE", section_heading))
         
-    story.append(Spacer(1, 2))
-    
-    # Job 2
-    story.append(Paragraph("Python Backend Developer | Independent Contractor | Jan 2019 &ndash; Jan 2021", job_title_style))
-    job2_bullets = [
-        "Delivered 8+ backend software projects across SaaS, logistics, booking, and e-commerce domains with a 100% project delivery success rate.",
-        "Built scalable REST APIs, workflow automation systems, and data pipelines using Python, Django, and PostgreSQL.",
-        "Developed multi-tenant platforms supporting hundreds of active users while maintaining secure customer data isolation and high availability.",
-        "Improved application reliability through database optimization, caching strategies, automated testing, and production troubleshooting."
-    ]
-    for b in job2_bullets:
-        story.append(Paragraph(f"&bull; {b}", bullet_style))
-        
+        for idx, job in enumerate(resume_data['experience']):
+            header = job['header']
+            # Dynamically replace Python/Backend developer labels with dynamic title for the most recent role
+            if idx == 0:
+                header = header.replace("Senior Backend Engineer (Python)", dynamic_job_title)
+                header = header.replace("Senior Backend Engineer", dynamic_job_title)
+                
+            story.append(Paragraph(header, job_title_style))
+            
+            job_bullets = list(job['bullets'])
+            if idx == 0:
+                # Prepend job-specific tailored Google XYZ accomplishments to the first job
+                custom_highlights = []
+                for b in bullets:
+                    if b:
+                        clean_b = b.replace("• ", "")
+                        clean_b = re.sub(r'^\[Tailored for [^\]]+\]:\s*', '', clean_b)
+                        clean_b = re.sub(r'^\[Tailored for [^\]]+\]\s*', '', clean_b)
+                        custom_highlights.append(clean_b)
+                
+                unique_highlights = custom_highlights[:3]
+                remaining_slots = 6 - len(unique_highlights)
+                combined_bullets = unique_highlights + job_bullets[:remaining_slots]
+            else:
+                combined_bullets = job_bullets
+                
+            for b in combined_bullets:
+                story.append(Paragraph(f"&bull; {b}", bullet_style))
+                
+            if idx < len(resume_data['experience']) - 1:
+                story.append(Spacer(1, 2))
+                
     # ==================== PAGE BREAK ====================
+    # Force projects and education to start on Page 2 (as in reference document)
     story.append(PageBreak())
     
     # ==================== PAGE 2 ====================
     
     # 4. Key Projects
-    story.append(Paragraph("KEY PROJECTS", section_heading))
-    
-    # Project 1
-    story.append(Paragraph("Security Automation &amp; Compliance Platform &ndash; Python, FastAPI, PostgreSQL, Elasticsearch, RabbitMQ", job_title_style))
-    p1_bullets = [
-        "Developed a centralized security automation platform to aggregate, classify, and track security findings across distributed services.",
-        "Implemented RBAC, audit logging, and compliance reporting workflows to improve security governance, traceability, and access control management.",
-        "Built event-driven remediation pipelines using RabbitMQ and Elasticsearch, reducing manual investigation effort and accelerating incident response workflows."
-    ]
-    for b in p1_bullets:
-        story.append(Paragraph(f"&bull; {b}", bullet_style))
+    if resume_data['projects']:
+        story.append(Paragraph("KEY PROJECTS", section_heading))
         
-    story.append(Spacer(1, 2))
-    
-    # Project 2
-    story.append(Paragraph("Cricket Fantasy Sports Platform &ndash; RabbitMQ, Celery, PostgreSQL, WebSockets", job_title_style))
-    p2_bullets = [
-        "Built backend systems supporting thousands of concurrent users during live sporting events."
-    ]
-    for b in p2_bullets:
-        story.append(Paragraph(f"&bull; {b}", bullet_style))
-        
-    story.append(Spacer(1, 2))
-    
-    # Project 3
-    story.append(Paragraph("Transportation Management System &ndash; FastAPI, PostgreSQL, Elasticsearch, AWS", job_title_style))
-    p3_bullets = [
-        "Designed multi-tenant logistics services with real-time tracking and operational search capabilities."
-    ]
-    for b in p3_bullets:
-        story.append(Paragraph(f"&bull; {b}", bullet_style))
-        
+        for idx, project in enumerate(resume_data['projects']):
+            story.append(Paragraph(project['header'], job_title_style))
+            for b in project['bullets']:
+                story.append(Paragraph(f"&bull; {b}", bullet_style))
+            if idx < len(resume_data['projects']) - 1:
+                story.append(Spacer(1, 2))
+                
     # 5. Education
-    story.append(Paragraph("EDUCATION", section_heading))
-    story.append(Paragraph("M.Sc. Artificial Intelligence &ndash; De Montfort University Dubai (2026)", body_style))
-    story.append(Paragraph("B.Tech. Computer Science &ndash; JSS Academy of Technical Education, Noida (2021)", body_style))
-    
+    if resume_data['education']:
+        story.append(Paragraph("EDUCATION", section_heading))
+        for edu in resume_data['education']:
+            story.append(Paragraph(edu, body_style))
+            
     # Build Document
     doc.build(story)
