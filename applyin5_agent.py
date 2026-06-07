@@ -161,10 +161,20 @@ def init_db():
     conn.close()
 
 def save_application(company, role, url, country, score, notes="", description=""):
-    """Saves a job application to the ATS database."""
+    """Saves a job application to the ATS database, preventing duplicate company/role combinations."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
+        # Check if the same company and role title (case-insensitive) already exists under a different URL
+        cursor.execute("""
+            SELECT id FROM applications 
+            WHERE LOWER(company) = LOWER(?) AND LOWER(role) = LOWER(?) AND url != ?
+        """, (company, role, url))
+        exists = cursor.fetchone()
+        if exists:
+            # Duplicate type of job, skip saving to prevent redundancy
+            return False
+            
         cursor.execute("""
             INSERT INTO applications (company, role, url, country, match_score, notes, description, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, 'Saved')
