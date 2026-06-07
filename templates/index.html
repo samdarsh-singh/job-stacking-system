@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApplyIn5 AI - Local ATS & Automation Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.15);
+            --border: #334155;
+            
+            /* Status Colors */
+            --color-saved: #64748b;
+            --color-applied: #3b82f6;
+            --color-interview: #a855f7;
+            --color-offer: #10b981;
+            --color-rejected: #ef4444;
+            --color-applying: #eab308;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            line-height: 1.5;
+        }
+
+        header {
+            margin-bottom: 2.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-sub);
+            font-size: 0.95rem;
+            margin-top: 0.25rem;
+        }
+
+        .btn {
+            background-color: var(--accent);
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .metric-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+            box-shadow: 0 8px 24px var(--accent-glow);
+        }
+
+        .metric-label {
+            color: var(--text-sub);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+            color: #ffffff;
+        }
+
+        /* Layout Main Section */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        /* ATS Section */
+        .panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .panel-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .search-box input {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            width: 250px;
+            transition: border-color 0.2s ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Responsive Table */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            color: var(--text-sub);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 1.1rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: rgba(255, 255, 255, 0.02);
+            cursor: pointer;
+        }
+
+        /* Checkbox styling */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .badge-saved { background-color: rgba(100, 116, 139, 0.15); color: #cbd5e1; border: 1px solid rgba(100, 116, 139, 0.3); }
+        .badge-applied-me { background-color: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-applied-ai { background-color: rgba(168, 85, 247, 0.15); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.3); }
+        .badge-interview { background-color: rgba(234, 179, 8, 0.15); color: #fef08a; border: 1px solid rgba(234, 179, 8, 0.3); }
+        .badge-offer { background-color: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-rejected { background-color: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-applying { background-color: rgba(234, 179, 8, 0.25); color: #fef08a; border: 1px solid rgba(234, 179, 8, 0.5); animation: pulse 1.5s infinite; }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        /* Score Badge */
+        .score-pill {
+            font-weight: 700;
+            color: #6366f1;
+            background-color: var(--accent-glow);
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+        }
+
+        /* Modal Layout */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 1.5rem;
+        }
+
+        .modal {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 900px;
+            max-height: 95vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .modal-close:hover {
+            color: white;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .modal-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            background-color: var(--bg-dark);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .meta-label {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .meta-value {
+            font-weight: 500;
+            margin-top: 0.25rem;
+            font-size: 0.95rem;
+        }
+
+        .modal-tabs {
+            display: flex;
+            gap: 1rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+            transition: color 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: white;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Material Content Styling */
+        .content-box {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            color: #cbd5e1;
+            max-height: 350px;
+            overflow-y: auto;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .bullets-list {
+            list-style: none;
+        }
+
+        .bullets-list li {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .bullets-list strong {
+            color: var(--accent);
+        }
+
+        .prompt-card {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .prompt-title {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        /* Form Controls */
+        select, input, textarea {
+            background-color: var(--bg-dark);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 0.6rem 0.8rem;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 0.95rem;
+            transition: border-color 0.2s ease;
+        }
+
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            font-weight: 600;
+        }
+
+        /* Grid for manually add popup */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>ApplyIn5 AI Dashboard</h1>
+            <p class="subtitle">European Relocation & Senior Backend Engineering Agent - Samdarsh Singh</p>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <button class="btn" style="background-color: #3b82f6;" onclick="document.getElementById('file-upload-input').click()">Upload Baseline Resume</button>
+            <input type="file" id="file-upload-input" style="display: none;" accept=".pdf,.txt" onchange="uploadBaselineResume(event)">
+            <button class="btn" style="background-color: #10b981;" onclick="openManualModal()">Add Job Manually</button>
+        </div>
+    </header>
+
+    <!-- Metrics Card Panel -->
+    <section class="metrics-grid" id="metrics-panel">
+        <div class="metric-card">
+            <div class="metric-label">🌐 Scanned Positions</div>
+            <div class="metric-value" id="stat-scanned">-</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">🎯 Matches (🏆)</div>
+            <div class="metric-value" id="stat-saved">-</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">✉️ Applied by Me</div>
+            <div class="metric-value" id="stat-applied-user">-</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">🤖 Applied by AI</div>
+            <div class="metric-value" id="stat-applied-ai">-</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">📞 Interviews</div>
+            <div class="metric-value" id="stat-interviews">-</div>
+        </div>
+        <div class="metric-card" style="border-color: rgba(16, 185, 129, 0.4)">
+            <div class="metric-label" style="color: #6ee7b7">🏆 Offers Received</div>
+            <div class="metric-value" id="stat-offers" style="color: var(--color-offer)">-</div>
+        </div>
+    </section>
+
+    <!-- Main Table Layout -->
+    <main class="main-layout">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">Active Applications Tracking Board</div>
+                <div class="search-box">
+                    <button class="btn" style="background-color: #10b981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25); display: none;" id="bulk-apply-btn" onclick="triggerBulkApply()">
+                        ⚡ Auto-Apply Selected (<span id="selected-count">0</span>)
+                    </button>
+                    <input type="text" id="search-input" placeholder="Search company, status, region..." oninput="fetchJobs()">
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="select-all" onclick="toggleSelectAll(this)"></th>
+                            <th>Score</th>
+                            <th>Company</th>
+                            <th>Role Title</th>
+                            <th>Location</th>
+                            <th>Last Status</th>
+                            <th>Applied Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobs-table-body">
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-sub)">Loading active job board database...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- View & Edit Modal Drawer -->
+    <div class="modal-overlay" id="detail-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modal-company-role" style="font-size: 1.35rem; font-weight: 700;">-</h2>
+                    <p id="modal-company" class="subtitle">-</p>
+                </div>
+                <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="modal-meta-grid">
+                    <div class="meta-item">
+                        <span class="meta-label">Match Score</span>
+                        <span class="meta-value" id="modal-score">-</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Location</span>
+                        <span class="meta-value" id="modal-location">-</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Original Link</span>
+                        <span class="meta-value"><a href="#" id="modal-link" target="_blank" style="color: var(--accent); font-weight: 600; text-decoration: none;">Open Job Post ↗</a></span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Change Pipeline Status</span>
+                        <select id="modal-status-select" onchange="updateStatus()" style="margin-top: 0.25rem;">
+                            <option value="Saved">Saved</option>
+                            <option value="Applied">Applied</option>
+                            <option value="Recruiter Screen">Recruiter Screen</option>
+                            <option value="Technical Interview">Technical Interview</option>
+                            <option value="Manager Interview">Manager Interview</option>
+                            <option value="Final Round">Final Round</option>
+                            <option value="Offer">Offer</option>
+                            <option value="Rejected">Rejected</option>
+                            <option value="Accepted">Accepted</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="modal-tabs">
+                    <button class="tab-btn active" onclick="switchTab(event, 'tab-cl')">Tailored Cover Letter</button>
+                    <button class="tab-btn" onclick="switchTab(event, 'tab-resume')">Google XYZ Resume Optimizer</button>
+                    <button class="tab-btn" onclick="switchTab(event, 'tab-tailored-resume')">Tailored Resume</button>
+                    <button class="tab-btn" onclick="switchTab(event, 'tab-prompts')">AI Copilot Prompts</button>
+                </div>
+
+                <!-- Cover Letter Content -->
+                <div class="tab-content active" id="tab-cl">
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
+                        <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="copyText('cl-box')">Copy Cover Letter</button>
+                    </div>
+                    <div class="content-box" id="cl-box">Loading cover letter...</div>
+                </div>
+
+                <!-- Tailored Resume Content -->
+                <div class="tab-content" id="tab-tailored-resume">
+                    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-bottom: 0.5rem;">
+                        <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="copyText('tailored-resume-box')">Copy Resume Text</button>
+                        <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: #10b981;" onclick="downloadTailoredResume()">Download Resume (.txt)</button>
+                        <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: #3b82f6;" onclick="downloadTailoredResumePDF()">Download Resume (.pdf)</button>
+                    </div>
+                    <pre class="content-box" id="tailored-resume-box" style="white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto; text-align: left; font-family: monospace;">Loading tailored resume...</pre>
+                </div>
+
+                <!-- Resume Bullets Content -->
+                <div class="tab-content" id="tab-resume">
+                    <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
+                        <button class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="copyBullets()">Copy Optimized Bullets</button>
+                    </div>
+                    <ul class="bullets-list" id="resume-bullets-list">
+                        <li>Loading optimized bullet recommendations...</li>
+                    </ul>
+                </div>
+
+                <!-- AI Copilot Prompts Tab -->
+                <div class="tab-content" id="tab-prompts">
+                    <div class="prompt-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div class="prompt-title">Prompt 1: Recruiter Evaluation & Keywords</div>
+                            <button class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="copyText('prompt-1-text')">Copy Prompt</button>
+                        </div>
+                        <div class="content-box" id="prompt-1-text" style="max-height: 250px;">Generating prompt...</div>
+                    </div>
+
+                    <div class="prompt-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div class="prompt-title">Prompt 2: Google XYZ Experience Rewrite</div>
+                            <button class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="copyText('prompt-2-text')">Copy Prompt</button>
+                        </div>
+                        <div class="content-box" id="prompt-2-text" style="max-height: 150px;">Generating prompt...</div>
+                    </div>
+
+                    <div class="prompt-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <div class="prompt-title">Prompt 3: Stop-The-Scroll ATS Scan</div>
+                            <button class="btn" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;" onclick="copyText('prompt-3-text')">Copy Prompt</button>
+                        </div>
+                        <div class="content-box" id="prompt-3-text" style="max-height: 150px;">Generating prompt...</div>
+                    </div>
+                </div>
+
+                <!-- Auto-Apply Button inside the detail modal -->
+                <button class="btn" style="background-color: #10b981; margin-top: 1.5rem; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-size: 1rem; padding: 0.8rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);" id="modal-autofill-btn" onclick="triggerAutoFill()">
+                    <span>⚡ Auto-Fill Application with AI</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Job Manually Modal -->
+    <div class="modal-overlay" id="manual-modal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 style="font-size: 1.25rem; font-weight: 700;">Add External Position Manually</h2>
+                <button class="modal-close" onclick="closeManualModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="manual-form" onsubmit="submitManualForm(event)">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Company Name *</label>
+                            <input type="text" name="company" required placeholder="e.g. Google">
+                        </div>
+                        <div class="form-group">
+                            <label>Role Title *</label>
+                            <input type="text" name="role" required placeholder="e.g. Senior Backend Engineer">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Application Post URL *</label>
+                        <input type="url" name="url" required placeholder="https://example.com/apply-link">
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Location / Country</label>
+                            <input type="text" name="country" placeholder="e.g. Berlin, Germany">
+                        </div>
+                        <div class="form-group">
+                            <label>Estimated Match Score (%)</label>
+                            <input type="number" name="score" step="0.1" value="85.0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Custom Recruiter Info or Interview Notes</label>
+                        <textarea name="notes" rows="3" placeholder="Append recruiter contacts, offer amounts, or upcoming dates..."></textarea>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+                        <button type="button" class="btn" style="background-color: var(--color-saved); box-shadow: none;" onclick="closeManualModal()">Cancel</button>
+                        <button type="submit" class="btn">Add to ATS SQLite</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentJobId = null;
+
+        // Fetch Metrics & Display
+        async function fetchMetrics() {
+            try {
+                const response = await fetch('/api/metrics');
+                const data = await response.json();
+                document.getElementById('stat-scanned').innerText = data.scanned_count;
+                document.getElementById('stat-saved').innerText = `${data.saved_count} (${data.avg_match}%)`;
+                document.getElementById('stat-applied-user').innerText = data.applied_by_user;
+                document.getElementById('stat-applied-ai').innerText = data.applied_by_ai;
+                document.getElementById('stat-interviews').innerText = data.interview_count;
+                document.getElementById('stat-offers').innerText = data.offers_count;
+            } catch (error) {
+                console.error("Error fetching metrics:", error);
+            }
+        }
+
+        // Fetch Tracked Jobs and Populate Table
+        async function fetchJobs() {
+            const query = document.getElementById('search-input').value;
+            try {
+                const response = await fetch(`/api/jobs?search=${encodeURIComponent(query)}`);
+                const jobs = await response.json();
+                
+                const tableBody = document.getElementById('jobs-table-body');
+                if (jobs.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-sub)">No applications tracked matching the query criteria.</td></tr>`;
+                    return;
+                }
+
+                tableBody.innerHTML = '';
+                jobs.forEach(job => {
+                    let badgeClass = 'badge-saved';
+                    let statusLabel = job.status;
+                    const s = job.status.toLowerCase();
+                    if (s === 'applied') {
+                        if (job.applied_by === 'AI') {
+                            badgeClass = 'badge-applied-ai';
+                            statusLabel = '🤖 Applied (AI)';
+                        } else {
+                            badgeClass = 'badge-applied-me';
+                            statusLabel = '✉️ Applied (Me)';
+                        }
+                    }
+                    else if (s.includes('interview') || s.includes('screen') || s.includes('round')) badgeClass = 'badge-interview';
+                    else if (s === 'offer' || s === 'accepted') badgeClass = 'badge-offer';
+                    else if (s === 'rejected') badgeClass = 'badge-rejected';
+
+                    const row = document.createElement('tr');
+                    row.id = `job-row-${job.id}`;
+                    row.onclick = () => openDetailModal(job.id);
+                    row.innerHTML = `
+                        <td style="text-align: center;" onclick="event.stopPropagation()">
+                            <input type="checkbox" class="job-checkbox" data-id="${job.id}" onchange="updateSelectedCount()">
+                        </td>
+                        <td><span class="score-pill">${job.score}%</span></td>
+                        <td style="font-weight: 600;">${job.company}</td>
+                        <td>${job.role}</td>
+                        <td>${job.country}</td>
+                        <td><span class="badge ${badgeClass}" id="row-badge-${job.id}">${statusLabel}</span></td>
+                        <td style="color: var(--text-sub); font-size: 0.9rem;">${job.applied_date}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                // Reset master checkbox
+                document.getElementById('select-all').checked = false;
+                updateSelectedCount();
+            } catch (error) {
+                console.error("Error fetching jobs:", error);
+            }
+        }
+
+        // Checkbox Handlers
+        function toggleSelectAll(master) {
+            const checkboxes = document.querySelectorAll('.job-checkbox');
+            checkboxes.forEach(cb => cb.checked = master.checked);
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const selected = document.querySelectorAll('.job-checkbox:checked');
+            const count = selected.length;
+            const bulkBtn = document.getElementById('bulk-apply-btn');
+            
+            if (count > 0) {
+                bulkBtn.style.display = 'inline-block';
+                if (count > 3) {
+                    bulkBtn.style.backgroundColor = '#ef4444';
+                    bulkBtn.innerHTML = `⚠️ Max 3 Jobs Allowed (${count} Selected)`;
+                } else {
+                    bulkBtn.style.backgroundColor = '#10b981';
+                    bulkBtn.innerHTML = `⚡ Auto-Apply Selected (<span id="selected-count">${count}</span>)`;
+                }
+            } else {
+                bulkBtn.style.display = 'none';
+            }
+        }
+
+        // Open View Details Modal & Trigger tailored generation
+        async function openDetailModal(jobId) {
+            currentJobId = jobId;
+            document.getElementById('detail-modal').style.display = 'flex';
+            
+            // Set initial placeholders
+            document.getElementById('modal-company-role').innerText = "Generating tailored drafts...";
+            document.getElementById('modal-company').innerText = "Loading details...";
+            document.getElementById('modal-score').innerText = "...";
+            document.getElementById('modal-location').innerText = "...";
+            document.getElementById('cl-box').innerText = "Composing authentic cover letter for this position...";
+            document.getElementById('resume-bullets-list').innerHTML = "<li>Drafting Google XYZ optimized bullets recommendations...</li>";
+            document.getElementById('tailored-resume-box').innerText = "Generating dynamically tailored resume...";
+            document.getElementById('prompt-1-text').innerText = "Preparing evaluation prompts...";
+            document.getElementById('prompt-2-text').innerText = "Preparing resume prompt Section 2...";
+            document.getElementById('prompt-3-text').innerText = "Preparing ATS optimizer Prompt 3...";
+
+            try {
+                // Fetch tailored details
+                const response = await fetch(`/api/jobs/${jobId}/tailored?_cb=${Date.now()}`);
+                const data = await response.json();
+                
+                document.getElementById('modal-company-role').innerText = data.role;
+                document.getElementById('modal-company').innerText = data.company;
+                document.getElementById('modal-location').innerText = data.country;
+                
+                document.getElementById('cl-box').innerText = data.cover_letter;
+                document.getElementById('tailored-resume-box').innerText = data.tailored_resume;
+                
+                const bulletsList = document.getElementById('resume-bullets-list');
+                bulletsList.innerHTML = '';
+                data.resume_bullets.forEach(bullet => {
+                    const li = document.createElement('li');
+                    li.innerHTML = bullet;
+                    bulletsList.appendChild(li);
+                });
+
+                // Populate AI Prompts
+                document.getElementById('prompt-1-text').innerText = data.prompt_1;
+                document.getElementById('prompt-2-text').innerText = data.prompt_2;
+                document.getElementById('prompt-3-text').innerText = data.prompt_3;
+
+                // Set status select
+                const jobsRes = await fetch(`/api/jobs`);
+                const jobs = await jobsRes.json();
+                const currentJob = jobs.find(j => j.id == jobId);
+                if (currentJob) {
+                    document.getElementById('modal-score').innerText = `${currentJob.score}%`;
+                    document.getElementById('modal-link').href = currentJob.url;
+                    document.getElementById('modal-status-select').value = currentJob.status;
+                }
+            } catch (error) {
+                console.error("Error loading job details:", error);
+            }
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detail-modal').style.display = 'none';
+            currentJobId = null;
+        }
+
+        function downloadTailoredResume() {
+            const text = document.getElementById('tailored-resume-box').innerText;
+            const company = document.getElementById('modal-company').innerText;
+            const role = document.getElementById('modal-company-role').innerText;
+            
+            const cleanComp = company.replace(/[^a-z0-9]/gi, '_');
+            const cleanRole = role.replace(/[^a-z0-9]/gi, '_');
+            const filename = `Samdarsh_Singh_Resume_Tailored_${cleanComp}_${cleanRole}.txt`;
+            
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+
+        function downloadTailoredResumePDF() {
+            if (!currentJobId) return;
+            window.open(`/api/jobs/${currentJobId}/resume/pdf`, '_blank');
+        }
+
+        async function uploadBaselineResume(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append("file", file);
+            
+            alert("Uploading resume PDF/TXT and dynamically parsing profile details...");
+            
+            try {
+                const response = await fetch('/api/resume/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    alert(`Success: Resume uploaded and parsed!\nParsed Profile:\n- Name: ${data.details.name}\n- Email: ${data.details.email}\n- Phone: ${data.details.phone}\n- LinkedIn: ${data.details.linkedin}`);
+                    fetchMetrics();
+                    fetchJobs();
+                } else {
+                    const err = await response.json();
+                    alert(`Error uploading resume: ${err.detail || 'Failed'}`);
+                }
+            } catch (error) {
+                console.error("Error uploading resume:", error);
+                alert("An error occurred during resume upload.");
+            }
+        }
+
+        // Update Job Status
+        async function updateStatus() {
+            if (!currentJobId) return;
+            const select = document.getElementById('modal-status-select');
+            const newStatus = select.value;
+            
+            try {
+                const response = await fetch(`/api/jobs/${currentJobId}/status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                if (response.ok) {
+                    fetchMetrics();
+                    fetchJobs();
+                } else {
+                    alert("Error updating pipeline status stage.");
+                }
+            } catch (error) {
+                console.error("Error updating status:", error);
+            }
+        }
+
+        // Trigger Selenium Auto-Filler inside background process for a single job id
+        async function runAutoApplyForId(jobId) {
+            const badge = document.getElementById(`row-badge-${jobId}`);
+            let originalBadgeHTML = "";
+            let originalBadgeClass = "";
+            if (badge) {
+                originalBadgeHTML = badge.innerHTML;
+                originalBadgeClass = badge.className;
+                badge.className = "badge badge-applying";
+                badge.innerText = "⏳ Applying...";
+            }
+
+            try {
+                const response = await fetch(`/api/jobs/${jobId}/autofill`, { method: 'POST' });
+                if (response.ok) {
+                    return true;
+                } else {
+                    if (badge) {
+                        badge.className = originalBadgeClass;
+                        badge.innerHTML = originalBadgeHTML;
+                    }
+                    return false;
+                }
+            } catch (error) {
+                console.error(`Error applying to job ID ${jobId}:`, error);
+                if (badge) {
+                    badge.className = originalBadgeClass;
+                    badge.innerHTML = originalBadgeHTML;
+                }
+                return false;
+            }
+        }
+
+        // Bulk Auto-Apply handler
+        async function triggerBulkApply() {
+            const selectedCheckbox = document.querySelectorAll('.job-checkbox:checked');
+            const jobIds = Array.from(selectedCheckbox).map(cb => cb.getAttribute('data-id'));
+            
+            if (jobIds.length === 0) return;
+            
+            if (jobIds.length > 3) {
+                alert(`Error: You can apply to a maximum of 3 jobs at once (you selected ${jobIds.length}). Please select at most 3 jobs to proceed.`);
+                return;
+            }
+            
+            const bulkBtn = document.getElementById('bulk-apply-btn');
+            const originalHTML = bulkBtn.innerHTML;
+            bulkBtn.innerHTML = "<span>🤖 Batch Applying...</span>";
+            bulkBtn.disabled = true;
+            
+            alert(`AI Copilot starting batch application workflow for ${jobIds.length} positions. Spawning headless browser processes sequentially (8s launch delay to prevent CPU spikes)...`);
+            
+            for (let i = 0; i < jobIds.length; i++) {
+                const jobId = jobIds[i];
+                console.log(`Auto-applying job ID: ${jobId}`);
+                
+                // Run background apply process
+                await runAutoApplyForId(jobId);
+                
+                // Rate-limiting delay to prevent multiple concurrent Chrome instances from spiking CPU/RAM
+                if (i < jobIds.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 8000));
+                }
+            }
+            
+            // Reload table & metrics to display updated status badges
+            setTimeout(() => {
+                fetchMetrics();
+                fetchJobs();
+                bulkBtn.innerHTML = originalHTML;
+                bulkBtn.disabled = false;
+            }, 5000);
+        }
+
+        async function triggerAutoFill() {
+            if (!currentJobId) return;
+            const btn = document.getElementById('modal-autofill-btn');
+            const originalText = btn.innerHTML;
+            
+            // Set Visual States
+            btn.innerHTML = "<span>🤖 Auto-Apply in Progress...</span>";
+            btn.disabled = true;
+            
+            const badge = document.getElementById(`row-badge-${currentJobId}`);
+            let originalBadgeHTML = "";
+            let originalBadgeClass = "";
+            if (badge) {
+                originalBadgeHTML = badge.innerHTML;
+                originalBadgeClass = badge.className;
+                badge.className = "badge badge-applying";
+                badge.innerText = "⏳ Applying...";
+            }
+
+            try {
+                const response = await fetch(`/api/jobs/${currentJobId}/autofill`, {
+                    method: 'POST'
+                });
+                const res = await response.json();
+                if (response.ok) {
+                    alert("FastAPI Backend: Headless background auto-apply triggered! The job is being filled, processed, submitted, and logged completely in the background.");
+                    fetchMetrics();
+                    fetchJobs();
+                } else {
+                    alert(res.detail || "Error launching background Selenium Auto-Filler.");
+                    if (badge) {
+                        badge.className = originalBadgeClass;
+                        badge.innerHTML = originalBadgeHTML;
+                    }
+                }
+            } catch (error) {
+                console.error("Error launching autofill:", error);
+                alert("Error connecting to FastAPI backend.");
+                if (badge) {
+                    badge.className = originalBadgeClass;
+                    badge.innerHTML = originalBadgeHTML;
+                }
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Tab Switching
+        function switchTab(evt, tabId) {
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            tabBtns.forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+
+        // Modal Form manual add
+        function openManualModal() {
+            document.getElementById('manual-modal').style.display = 'flex';
+        }
+
+        function closeManualModal() {
+            document.getElementById('manual-modal').style.display = 'none';
+            document.getElementById('manual-form').reset();
+        }
+
+        async function submitManualForm(evt) {
+            evt.preventDefault();
+            const form = document.getElementById('manual-form');
+            const formData = new FormData(form);
+            
+            try {
+                const response = await fetch('/api/jobs/manual', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (response.ok) {
+                    closeManualModal();
+                    fetchMetrics();
+                    fetchJobs();
+                } else {
+                    const err = await response.json();
+                    alert(err.detail || "Error adding external position manually.");
+                }
+            } catch (error) {
+                console.error("Error submitting manual job:", error);
+            }
+        }
+
+        // Copy Clipboard Helpers
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Copied text to clipboard successfully!");
+            });
+        }
+
+        function copyBullets() {
+            const bullets = [];
+            const items = document.querySelectorAll('#resume-bullets-list li');
+            items.forEach(item => bullets.push(item.innerText));
+            navigator.clipboard.writeText(bullets.join('\n')).then(() => {
+                alert("Resume bullets copied to clipboard!");
+            });
+        }
+
+        // Init Loads
+        window.onload = () => {
+            fetchMetrics();
+            fetchJobs();
+        };
+    </script>
+</body>
+</html>

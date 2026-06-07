@@ -1,0 +1,27 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python caching
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local database and state
+*.db
+*.log
+cron_log.log
+
+# Generated folders/drafts
+drafts/
+auto_applied/
+auto_applied_screenshots/
+
+# Temporary files
+Samdarsh_Cover_Letter.txt
+candidate_profile.json
+
+# OS files
+.DS_Store
+Thumbs.db
