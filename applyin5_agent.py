@@ -818,6 +818,89 @@ def fetch_lever_company(company_token):
             pass
     return jobs
 
+def fetch_linkedin_jobs(target_regions=None):
+    """
+    Scrapes public LinkedIn software development job listings using Playwright.
+    Bypasses rate limits and delivers premium, fresh job postings safely.
+    """
+    print("Scraping public LinkedIn job listings using Playwright...")
+    from playwright.sync_api import sync_playwright
+    
+    # Map target regions to locations
+    locations = []
+    if target_regions:
+        region_map = {
+            'us': 'United States',
+            'uk': 'United Kingdom',
+            'ca': 'Canada',
+            'eu': 'Europe'
+        }
+        for r in target_regions:
+            if r in region_map:
+                locations.append(region_map[r])
+    
+    if not locations:
+        # Default target locations for Samdarsh (Priority 1 & 2 countries)
+        locations = ['Germany', 'Netherlands', 'Ireland', 'United Kingdom']
+        
+    keywords = ['Python Backend', 'Backend Engineer', 'Developer']
+    jobs = []
+    
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            )
+            page = context.new_page()
+            
+            for loc in locations[:3]: # Limit to top 3 locations to prevent long scrape times
+                for kw in keywords[:2]: # Limit to top 2 keywords
+                    search_term = urllib.parse.quote(kw)
+                    search_loc = urllib.parse.quote(loc)
+                    # f_TPR=r86400 means jobs posted in the past 24 hours (super fresh!)
+                    url = f"https://www.linkedin.com/jobs/search/?keywords={search_term}&location={search_loc}&f_TPR=r86400"
+                    
+                    try:
+                        print(f"  • LinkedIn Search: keywords='{kw}', location='{loc}'...")
+                        page.goto(url, wait_until="domcontentloaded", timeout=20000)
+                        page.wait_for_timeout(2000)
+                        
+                        cards = page.locator(".base-search-card")
+                        count = min(10, cards.count()) # Extract top 10 jobs per query
+                        
+                        for i in range(count):
+                            card = cards.nth(i)
+                            try:
+                                title = card.locator(".base-search-card__title").first.inner_text().strip()
+                                company = card.locator(".base-search-card__subtitle").first.inner_text().strip()
+                                job_loc = card.locator(".job-search-card__location").first.inner_text().strip()
+                                link = card.locator("a.base-card__full-link").first.get_attribute("href")
+                                
+                                clean_link = link.split('?')[0] if link else ''
+                                
+                                # Skip if link already extracted in this run
+                                if clean_link and not any(j['link'] == clean_link for j in jobs):
+                                    jobs.append({
+                                        'title': title,
+                                        'company': company,
+                                        'link': clean_link,
+                                        'description': f"Position: {title} at {company}. Location: {job_loc}. Posted on LinkedIn.",
+                                        'source': 'LinkedIn',
+                                        'location': job_loc,
+                                        'tags': ['Python', 'Backend', 'Software Engineer'],
+                                        'pub_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                    })
+                            except Exception:
+                                pass
+                    except Exception as e:
+                        print(f"    - Error searching LinkedIn query: {e}")
+            browser.close()
+    except Exception as e:
+        print(f"  ❌ Error initializing LinkedIn Playwright scraper: {e}")
+        
+    print(f"  🚀 Completed LinkedIn scraping. Found {len(jobs)} fresh positions!")
+    return jobs
 
 # --- Execution Controller ---
 
@@ -833,6 +916,7 @@ def run_daily_job_search(target_regions=None, max_fetch=300):
     # Skip We Work Remotely as requested
     raw_jobs.extend(fetch_remotive())
     raw_jobs.extend(fetch_jobicy(target_regions))
+    raw_jobs.extend(fetch_linkedin_jobs(target_regions))
     
     # Newly expanded channels
     raw_jobs.extend(fetch_remote_ok())
