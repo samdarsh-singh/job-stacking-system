@@ -18,9 +18,11 @@ drafts/
 auto_applied/
 auto_applied_screenshots/
 
-# Temporary files
+# Temporary files and personal resumes
 Samdarsh_Cover_Letter.txt
 candidate_profile.json
+Samdarsh_Resume.txt
+Samdarsh_Updated_Germany_Resume.pdf
 
 # OS files
 .DS_Store
