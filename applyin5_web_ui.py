@@ -197,8 +197,10 @@ def generate_tailored_resume_text(resume_text, strengths, bullets):
     """
     # Import standard dynamic job title and summary resolvers
     import generate_pdf_resume
-    dynamic_job_title = generate_pdf_resume.get_dynamic_job_title(strengths)
-    dynamic_summary = generate_pdf_resume.get_dynamic_summary(strengths, dynamic_job_title)
+    resume_data = generate_pdf_resume.parse_baseline_resume(resume_text)
+    original_summary = resume_data['summary']
+    dynamic_job_title = generate_pdf_resume.get_dynamic_job_title(strengths, resume_data['title'])
+    dynamic_summary = generate_pdf_resume.get_dynamic_summary(original_summary, strengths, dynamic_job_title)
     
     # Strip prefixes from bullets
     clean_bullets = []
